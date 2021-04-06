@@ -37,6 +37,40 @@ class ElementParser(HTMLParser):
         return temp_data
 
 
+
+class ElementURLParser(HTMLParser):
+    """
+    This class returns the data within any HTML element.
+    :param attr_name: The attribute of the element
+    :param start_value: The value of the attribute where you want to start collecting data
+    :param end_value: The value of the attribute where you want to stop collecting data
+    """
+
+    def __init__(self, attr_name, start_value):
+        super().__init__()
+        self.save_data = False
+        self.attr_name = attr_name
+        self.start_value = start_value
+        self.data = ""
+
+    def handle_starttag(self, tag, attrs):
+        for attr, value in attrs:
+            if value == self.start_value:
+                self.save_data = True
+            if attr == "href" and self.save_data:
+                print(value)
+                self.data = value
+                self.save_data = False
+            if value != self.start_value:
+                self.save_data = False
+
+    def get_data(self):
+        """ Returns the data within the parser and clears out the old data. """
+        temp_data = self.data
+        self.data = ""
+        return temp_data
+
+
 class NeweggItemParser():
     """ This class gets information for items sold on newegg.com """
 
@@ -49,13 +83,15 @@ class NeweggItemParser():
             "class", "price-current", "price-save")
         self.in_stock_parser = ElementParser(
             "class", "product-inventory", "product-bullets")
+        self.search_parser = ElementURLParser(
+            "class", "item-title")
 
-    def _feed_parsers(self, html):
+    def _feed_item_parsers(self, html):
         self.name_parser.feed(html)
         self.price_parser.feed(html)
         self.in_stock_parser.feed(html)
 
-    def run(self, html):
+    def get_item_info(self, html):
         """
         This function grabs the information about the item
         :param html: The HTML text of a webpage
@@ -67,6 +103,9 @@ class NeweggItemParser():
         in_stock = self.in_stock_parser.get_data() != "OUT OF STOCK."
         return name, price, in_stock
 
+    def search(self, html):
+        self.search_parser.feed(html)
+        return self.search_parser.get_data()
 
 def get_html(url):
     """ Gets the HTML text of a URL """
@@ -79,13 +118,14 @@ def get_html(url):
 def main():
     """ Main function """
     urls = [
-        'https://www.newegg.com/asus-geforce-rtx-3080-tuf-rtx3080-o10g-gaming/p/N82E16814126452',
-        'https://www.newegg.com/black-lsspaid-hb-2060-red-chair/p/358-007N-00005?Item=9SIARZUCAE0340&cm_sp=Homepage_SS-_-P0_9SIARZUCAE0340-_-03312021',
-        'https://www.newegg.com/amd-ryzen-7-3700x/p/N82E16819113567?Item=N82E16819113567&cm_sp=Homepage_dailydeals-_-P0_19-113-567-_-03312021',
+        'https://www.newegg.com/p/pl?d=intel'
     ]
     newegg = NeweggItemParser()
     for url in urls:
-        print(newegg.run(get_html(url)))
+        with open("test.html", "w") as f:
+            html = get_html(url)
+            f.write(html)
+            print(html)
 
 
 if __name__ == "__main__":
